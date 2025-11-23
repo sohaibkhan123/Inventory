@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { InventoryItem, UsageEntry } from '../types';
 
-const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api/inventory';
+const API_URL = (import.meta as any).env.VITE_API_URL || 'https://backend-inv-ll9h.onrender.com/api/inventory';
 
 // Helper to get token
 const getAuthHeaders = () => {
