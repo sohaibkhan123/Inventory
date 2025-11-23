@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { InventoryItem as InventoryItemType } from '../types';
 import { InventoryItem } from './InventoryItem';
@@ -6,6 +5,7 @@ import { InventoryItem } from './InventoryItem';
 interface PrGroupProps {
   prNumber: string;
   items: InventoryItemType[];
+  userRole: 'incharge' | 'store';
   onEdit: (item: InventoryItemType) => void;
   onDelete: (id: string) => void;
 }
@@ -19,7 +19,7 @@ const TableHeader: React.FC<TableHeaderProps> = ({ children, className = '' }) =
   <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${className || 'font-medium text-gray-500'}`}>{children}</th>
 );
 
-export const PrGroup: React.FC<PrGroupProps> = ({ prNumber, items, onEdit, onDelete }) => {
+export const PrGroup: React.FC<PrGroupProps> = ({ prNumber, items, userRole, onEdit, onDelete }) => {
   return (
     <div id={`pr-${prNumber}`} className="border border-gray-200 rounded-lg p-4 bg-gray-50/50 transition-all duration-300">
       <h3 className="text-lg font-semibold text-secondary mb-3">PR Number: {prNumber}</h3>
@@ -36,7 +36,7 @@ export const PrGroup: React.FC<PrGroupProps> = ({ prNumber, items, onEdit, onDel
               <TableHeader className="font-bold text-orange-800 bg-orange-50 border-b-2 border-orange-100">Used Qty</TableHeader>
               <TableHeader className="font-bold text-gray-700 bg-gray-50 border-b-2 border-gray-300">Balance Qty</TableHeader>
               <TableHeader className="font-extrabold text-indigo-900 bg-indigo-100 border-b-2 border-indigo-300 shadow-sm">Remaining Qty</TableHeader>
-              <TableHeader>Actions</TableHeader>
+              {userRole === 'incharge' && <TableHeader>Actions</TableHeader>}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -44,6 +44,7 @@ export const PrGroup: React.FC<PrGroupProps> = ({ prNumber, items, onEdit, onDel
               <InventoryItem
                 key={item.id}
                 item={item}
+                userRole={userRole}
                 onEdit={onEdit}
                 onDelete={onDelete}
               />

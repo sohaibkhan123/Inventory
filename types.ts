@@ -1,11 +1,16 @@
+export interface User {
+  username: string;
+  role: 'incharge' | 'store';
+  token?: string;
+}
 
 export interface UsageEntry {
   id: string;
   projectId: string;
   quantity: number;
   date: string;
-  issuedTo: string; // Name of the person who received the material
-  issueSlipImage?: string; // Base64 string of the Issue Slip
+  issuedTo: string; 
+  issueSlipImage?: string;
 }
 
 export interface InventoryItem {

@@ -1,10 +1,10 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import type { InventoryItem } from '../types';
 import { ProjectSection } from './ProjectSection';
 
 interface DashboardProps {
   inventory: InventoryItem[];
+  userRole: 'incharge' | 'store';
   onEdit: (item: InventoryItem) => void;
   onDelete: (id: string) => void;
   targetProject?: string;
@@ -12,7 +12,7 @@ interface DashboardProps {
   targetTs?: number;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ inventory, onEdit, onDelete, targetProject, targetPr, targetTs }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ inventory, userRole, onEdit, onDelete, targetProject, targetPr, targetTs }) => {
   const groupedByProject = useMemo(() => {
     return inventory.reduce((acc, item) => {
       (acc[item.projectId] = acc[item.projectId] || []).push(item);
@@ -24,12 +24,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ inventory, onEdit, onDelet
   
   const [activeProject, setActiveProject] = useState<string | null>(null);
 
-  // Handle Navigation Request or Default Initialization
   useEffect(() => {
     if (targetProject && groupedByProject[targetProject]) {
         setActiveProject(targetProject);
     } else if (sortedProjectIds.length > 0 && activeProject === null) {
-        // Default fallback only if no project is selected yet
         setActiveProject(sortedProjectIds[0]);
     }
   }, [targetProject, targetTs, sortedProjectIds, groupedByProject]);
@@ -41,7 +39,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ inventory, onEdit, onDelet
             <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
         </svg>
         <h3 className="mt-4 text-lg font-medium text-gray-900">No inventory items</h3>
-        <p className="mt-2 text-gray-500">Get started by adding a new item via the "Add Item" button.</p>
+        {userRole === 'incharge' && <p className="mt-2 text-gray-500">Get started by adding a new item via the "Add Item" button.</p>}
       </div>
     )
   }
@@ -72,6 +70,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ inventory, onEdit, onDelet
             <ProjectSection
                 projectId={activeProject}
                 items={groupedByProject[activeProject]}
+                userRole={userRole}
                 onEdit={onEdit}
                 onDelete={onDelete}
                 targetPr={targetProject === activeProject ? targetPr : undefined}
