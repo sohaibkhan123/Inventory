@@ -4,7 +4,7 @@ import type { InventoryItem, UsageEntry } from '../types';
 
 // VITE_API_URL will be set in Vercel dashboard. 
 // Fallback to localhost for development.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/inventory';
+const API_URL = import.meta.env.VITE_API_URL || 'https://backend-inv-ll9h.onrender.com/api/inventory';
 
 export const useInventory = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
