@@ -11,7 +11,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
 
   // Use env var or default for login API
-  const API_URL = (import.meta as any).env.VITE_API_URL?.replace('/inventory', '/login') || 'http://localhost:5000/api/login';
+  const API_URL = (import.meta as any).env.VITE_API_URL?.replace('/inventory', '/login') || 'https://backend-inv-ll9h.onrender.com/api/login';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
