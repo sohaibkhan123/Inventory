@@ -12,13 +12,19 @@ interface Message {
   content: string;
 }
 
+declare global {
+  interface Window {
+    puter: any;
+  }
+}
+
 export const Chatbot: React.FC<ChatbotProps> = ({ inventory }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { 
         id: 'welcome', 
         role: 'assistant', 
-        content: `Hello! I am your Inventory Assistant.<br/><br/>I can help you search for items, track usage, or export reports.<br/><b>Try asking:</b><br/>- "Show Inventory"<br/>- "Show Usage"<br/>- "Search [keyword]"`
+        content: `Hello! I am your AI Inventory Assistant powered by Puter.<br/><br/>I have access to your live inventory data. Ask me anything!`
     }
   ]);
   const [input, setInput] = useState('');
@@ -36,7 +42,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({ inventory }) => {
     scrollToBottom();
   }, [messages, isOpen]);
 
-  // --- Helper: Convert Data to CSV and Download ---
+  // --- Export Helper ---
   const exportToCSV = (category: string) => {
     let csvContent = "data:text/csv;charset=utf-8,";
     let filename = "report.csv";
@@ -90,149 +96,95 @@ export const Chatbot: React.FC<ChatbotProps> = ({ inventory }) => {
     return filename;
   };
 
-  // --- Logic: Search ---
-  const runSearch = (term: string) => {
-    const lowerTerm = term.toLowerCase();
-    const results = inventory.filter(i => 
-        i.itemCode.toLowerCase().includes(lowerTerm) ||
-        i.description.toLowerCase().includes(lowerTerm) ||
-        i.prNumber.toLowerCase().includes(lowerTerm) ||
-        i.projectId.toLowerCase().includes(lowerTerm)
-    );
-    
-    if (results.length === 0) {
-        return `No items found matching "<b>${term}</b>".`;
-    }
-    
-    let html = `<p class="mb-2">Found <b>${results.length}</b> items matching "<b>${term}</b>":</p>
-      <div class="overflow-x-auto">
-        <table class="min-w-full border border-gray-300 text-sm">
-          <thead class="bg-blue-600 text-white">
-            <tr><th class="p-2">Project</th><th class="p-2">Code</th><th class="p-2">Desc</th><th class="p-2">Bal</th></tr>
-          </thead>
-          <tbody>`;
-          
-    results.slice(0, 10).forEach(item => {
-         const used = (item.usage || []).reduce((sum, u) => sum + u.quantity, 0);
-         const balance = item.receivedQty - used;
-         html += `<tr class="border-b"><td class="p-2">${item.projectId}</td><td class="p-2 font-bold">${item.itemCode}</td><td class="p-2 truncate max-w-[150px]">${item.description}</td><td class="p-2 font-bold">${balance}</td></tr>`;
-    });
-    
-    html += `</tbody></table></div>`;
-    if(results.length > 10) html += `<p class="text-xs text-gray-500 mt-1">...and ${results.length - 10} more.</p>`;
-    return html;
-  };
-
-  // --- Logic: Generate Inventory Table ---
-  const generateInventoryReport = () => {
-      if (inventory.length === 0) return "Inventory is empty.";
-      
-      let html = `<p class="mb-2">Here is the current inventory summary:</p>
-      <div class="overflow-x-auto max-h-60">
-        <table class="min-w-full border border-gray-300 text-sm">
-          <thead class="bg-gray-800 text-white sticky top-0">
-            <tr><th class="p-2">Project</th><th class="p-2">Code</th><th class="p-2">Qty</th></tr>
-          </thead>
-          <tbody>`;
-          
-      inventory.slice(0, 15).forEach(item => {
-           const used = (item.usage || []).reduce((sum, u) => sum + u.quantity, 0);
-           const balance = item.receivedQty - used;
-           html += `<tr class="border-b"><td class="p-2">${item.projectId}</td><td class="p-2">${item.itemCode}</td><td class="p-2">${balance} / ${item.receivedQty}</td></tr>`;
-      });
-      html += `</tbody></table></div>`;
-      if(inventory.length > 15) html += `<p class="text-xs text-gray-500 mt-1">Showing first 15 items.</p>`;
-      return html;
-  };
-
-  // --- Logic: Generate Usage Table ---
-  const generateUsageReport = () => {
-      const usageItems = inventory.filter(i => i.usage && i.usage.length > 0);
-      if (usageItems.length === 0) return "No usage records found.";
-
-      let html = `<p class="mb-2">Recent usage history:</p>
-      <div class="overflow-x-auto max-h-60">
-        <table class="min-w-full border border-gray-300 text-sm">
-          <thead class="bg-green-700 text-white sticky top-0">
-            <tr><th class="p-2">Date</th><th class="p-2">Item</th><th class="p-2">To</th><th class="p-2">Slip</th></tr>
-          </thead>
-          <tbody>`;
-      
-      usageItems.forEach(item => {
-          item.usage?.forEach(u => {
-              const dateStr = u.date ? new Date(u.date).toLocaleDateString() : '-';
-              const slipBadge = u.issueSlipImage 
-                ? `<span class="text-green-600 font-bold">Yes</span>` 
-                : `<span class="text-gray-400">No</span>`;
-              html += `<tr class="border-b"><td class="p-2 whitespace-nowrap">${dateStr}</td><td class="p-2">${item.itemCode}</td><td class="p-2">${u.issuedTo}</td><td class="p-2 text-center">${slipBadge}</td></tr>`;
-          });
-      });
-
-      html += `</tbody></table></div>`;
-      return html;
-  };
-
   const sendMessage = async (text: string) => {
       if (!text.trim()) return;
       
+      // 1. Add User Message
       const userMessage: Message = {
           id: crypto.randomUUID(),
           role: 'user',
           content: text
       };
-
       setMessages(prev => [...prev, userMessage]);
       setInput('');
       setIsLoading(true);
 
-      // Simulate network delay for better UX
-      setTimeout(() => {
-        let response = "";
-        const lower = text.toLowerCase();
+      // 2. Prepare AI Context
+      try {
+        if (!window.puter || !window.puter.ai) {
+             throw new Error("Puter.js not loaded or AI unavailable. Please refresh.");
+        }
 
-        // Search Logic
+        // Check for Local Search Override (to keep it fast if user explicitly uses the Search UI)
         if (awaitingSearchTerm) {
-            response = runSearch(text);
             setAwaitingSearchTerm(false);
-        } 
-        // Command Processing
-        else if (lower.includes('search')) {
-            // Fallback if user types "search X" directly without clicking button
-            const term = text.replace(/search/i, '').trim();
-            if (term) {
-                response = runSearch(term);
-            } else {
-                response = "Please enter a keyword to search (e.g., 'Search 200').";
-            }
-        }
-        else if (lower.includes('inventory') || lower.includes('stock')) {
-             if (lower.includes('export')) {
-                 exportToCSV('inventory');
-                 response = "✅ Inventory report exported to CSV.";
-             } else {
-                 response = generateInventoryReport();
-             }
-        } 
-        else if (lower.includes('usage') || lower.includes('history')) {
-             if (lower.includes('export')) {
-                 exportToCSV('usage');
-                 response = "✅ Usage report exported to CSV.";
-             } else {
-                 response = generateUsageReport();
-             }
-        }
-        else {
-            response = `I'm not sure how to help with that. Please try one of the quick actions below or type "Search [keyword]".`;
+            // We pass this intention to the AI
         }
 
-        const botMessage: Message = {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: response
+        // Compress inventory data for the AI context (save tokens)
+        const inventoryContext = inventory.map(i => {
+            const used = (i.usage || []).reduce((a,b)=>a+b.quantity,0);
+            const bal = i.receivedQty - used;
+            return `[${i.projectId}] ${i.itemCode} (${i.description}): Rec:${i.receivedQty}, Bal:${bal}, Loc:${i.prNumber}`;
+        }).join('\n');
+
+        const usageContext = inventory.flatMap(i => 
+            (i.usage||[]).map(u => 
+                `Usage: ${i.itemCode} used in ${u.projectId} by ${u.issuedTo} on ${u.date.split('T')[0]} (Qty: ${u.quantity}) ${u.issueSlipImage ? '[Slip:Yes]' : '[Slip:No]'}`
+            )
+        ).join('\n');
+
+        const systemMessage = {
+            role: 'system',
+            content: `You are an intelligent Steel Inventory Assistant.
+            
+            DATA CONTEXT:
+            --- INVENTORY ---
+            ${inventoryContext.slice(0, 15000)} ${inventoryContext.length > 15000 ? '...(truncated)' : ''}
+            
+            --- USAGE HISTORY ---
+            ${usageContext.slice(0, 10000)} ${usageContext.length > 10000 ? '...(truncated)' : ''}
+            
+            RULES:
+            1. Use the data above to answer questions accurately.
+            2. If the user asks for a LIST or TABLE, generate HTML tables using Tailwind classes (e.g., <table class="min-w-full border border-gray-300">). Use <th class="bg-blue-600 text-white p-2">.
+            3. If the user explicitly asks to EXPORT data, reply ONLY with "[[EXPORT:INVENTORY]]" or "[[EXPORT:USAGE]]".
+            4. Be concise and helpful.
+            5. If asked about "IR" or "Issue Slip", refer to the [Slip:Yes/No] data.
+            `
         };
-        setMessages(prev => [...prev, botMessage]);
-        setIsLoading(false);
-      }, 600);
+
+        const chatHistory = messages.filter(m => m.role !== 'system').map(m => ({
+            role: m.role,
+            content: m.content
+        }));
+
+        // 3. Call Puter AI
+        // Fixed: Using window.puter.ai.chat(messages, options) instead of chatCompletion
+        const response = await window.puter.ai.chat(
+            [systemMessage, ...chatHistory, { role: 'user', content: text }],
+            { model: 'gpt-4o-mini' }
+        );
+
+        const aiText = response?.message?.content || response?.toString() || "I couldn't generate a response. Please try again.";
+
+        // 4. Handle Special Actions
+        if (aiText.includes('[[EXPORT:INVENTORY]]')) {
+            exportToCSV('inventory');
+            setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: "✅ Inventory report exported to CSV." }]);
+        } else if (aiText.includes('[[EXPORT:USAGE]]')) {
+            exportToCSV('usage');
+            setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: "✅ Usage report exported to CSV." }]);
+        } else {
+            setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: aiText }]);
+        }
+
+      } catch (err: any) {
+          console.error(err);
+          setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: `Error: ${err.message || "Failed to connect to AI."}` }]);
+      } finally {
+          setIsLoading(false);
+      }
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -252,8 +204,8 @@ export const Chatbot: React.FC<ChatbotProps> = ({ inventory }) => {
   };
 
   const quickActions = [
-    { label: "Show Inventory", command: "Show Inventory" },
-    { label: "Show Usage", command: "Show Usage" },
+    { label: "Show Inventory", command: "Show Inventory Table" },
+    { label: "Show Usage", command: "Show Usage History Table" },
     { label: "Search", command: "Search" },
     { label: "Export Inventory", command: "Export Inventory" },
     { label: "Export Usage", command: "Export Usage" },
@@ -272,7 +224,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({ inventory }) => {
                 </div>
                 <div>
                   <h3 className="font-bold text-xl tracking-tight">Inventory Assistant</h3>
-                  <p className="text-xs text-blue-200 font-medium">Automated System</p>
+                  <p className="text-xs text-blue-200 font-medium">Powered by Puter.ai</p>
                 </div>
             </div>
             <button 
@@ -316,7 +268,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({ inventory }) => {
                 <div className="flex justify-start">
                   <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-none p-5 shadow-sm">
                     <div className="flex space-x-2 items-center">
-                      <span className="text-sm text-gray-500 font-semibold mr-2">Processing...</span>
+                      <span className="text-sm text-gray-500 font-semibold mr-2">Thinking...</span>
                       <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
                       <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
@@ -360,7 +312,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({ inventory }) => {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={awaitingSearchTerm ? "Search by item code, description, or project..." : "Type your message..."}
+                  placeholder={awaitingSearchTerm ? "Search by item code, description, or project..." : "Ask me anything about your inventory..."}
                   className={`w-full border-0 bg-gray-100 text-gray-900 placeholder-gray-500 focus:ring-2 focus:bg-white rounded-full py-3 shadow-inner transition-all ${awaitingSearchTerm ? 'pl-10 pr-12 ring-2 ring-blue-500' : 'pl-4 pr-12 focus:ring-blue-500'}`}
                   disabled={isLoading}
                 />
