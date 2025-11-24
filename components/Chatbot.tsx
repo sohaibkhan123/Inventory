@@ -42,6 +42,16 @@ export const Chatbot: React.FC<ChatbotProps> = ({ inventory }) => {
     scrollToBottom();
   }, [messages, isOpen]);
 
+  // Ensure Puter.js is loaded
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.puter) {
+        const script = document.createElement('script');
+        script.src = "https://js.puter.com/v2/";
+        script.async = true;
+        document.body.appendChild(script);
+    }
+  }, []);
+
   // --- Export Helper ---
   const exportToCSV = (category: string) => {
     let csvContent = "data:text/csv;charset=utf-8,";
@@ -111,8 +121,13 @@ export const Chatbot: React.FC<ChatbotProps> = ({ inventory }) => {
 
       // 2. Prepare AI Context
       try {
+        // Wait briefly if script is still loading
         if (!window.puter || !window.puter.ai) {
-             throw new Error("Puter.js not loaded or AI unavailable. Please refresh.");
+             await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        if (!window.puter || !window.puter.ai) {
+             throw new Error("Puter.js not loaded. Please refresh the page.");
         }
 
         // Check for Local Search Override (to keep it fast if user explicitly uses the Search UI)
@@ -160,7 +175,6 @@ export const Chatbot: React.FC<ChatbotProps> = ({ inventory }) => {
         }));
 
         // 3. Call Puter AI
-        // Fixed: Using window.puter.ai.chat(messages, options) instead of chatCompletion
         const response = await window.puter.ai.chat(
             [systemMessage, ...chatHistory, { role: 'user', content: text }],
             { model: 'gpt-4o-mini' }
